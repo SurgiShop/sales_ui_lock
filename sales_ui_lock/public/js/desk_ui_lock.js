@@ -20,14 +20,17 @@
     // HELPERS
     // ==========================
     function hasRole(role) {
+        if (!frappe || !frappe.user_roles) return false;
         return frappe.user_roles.includes(role);
     }
 
     function isAdmin() {
+        if (!frappe || !frappe.user_roles) return false;
         return ADMIN_ROLES.some(hasRole);
     }
 
     function getActiveRule() {
+        if (!frappe || !frappe.user_roles) return null;
         for (const role in ROLE_RULES) {
             if (hasRole(role)) return ROLE_RULES[role];
         }
@@ -110,6 +113,7 @@
     // ENFORCE UI LOCK
     // ==========================
     function enforce() {
+        if (!frappe || !frappe.user_roles) return; // Safety check
         if (isAdmin()) return;
         const rule = getActiveRule();
         if (!rule) return;
@@ -123,17 +127,30 @@
     // ==========================
     
     // Wait for Frappe to be fully loaded
-    frappe.ready(() => {
-        if (isAdmin()) return;
+    function initialize() {
+        if (!frappe || !frappe.user_roles) {
+            // Frappe not ready yet, try again in 100ms
+            setTimeout(initialize, 100);
+            return;
+        }
         
-        console.log('UI Lock initialized for Sales User');
+        if (isAdmin()) {
+            console.log('UI Lock: Admin user detected, not applying restrictions');
+            return;
+        }
+        
+        console.log('UI Lock: Initialized for restricted user');
+        console.log('User roles:', frappe.user_roles);
         
         // Start continuous monitoring
         startContinuousMonitoring();
         
         // Also hook into various Frappe events
         frappe.after_ajax(enforce);
-        frappe.router.on("change", enforce);
+        
+        if (frappe.router) {
+            frappe.router.on("change", enforce);
+        }
         
         // Watch for DOM changes with MutationObserver
         new MutationObserver(() => {
@@ -143,5 +160,12 @@
             childList: true,
             subtree: true
         });
-    });
+    }
+    
+    // Start initialization
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initialize);
+    } else {
+        initialize();
+    }
 })();
