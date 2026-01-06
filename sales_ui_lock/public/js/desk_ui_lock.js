@@ -71,7 +71,9 @@
                 if (!text) return;
 
                 if (!allow.includes(text)) {
-                    item.remove();
+                    item.style.opacity = "0.4";
+                    item.style.pointerEvents = "none";
+                    item.style.cursor = "not-allowed";
                 }
             });
     }
