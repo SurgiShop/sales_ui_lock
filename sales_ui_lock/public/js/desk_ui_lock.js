@@ -49,51 +49,61 @@
     }
 
     // ==========================
-    // FILTER SIDEBAR DROPDOWN
+    // AGGRESSIVE DROPDOWN FILTER
     // ==========================
     function filterDropdown(rule) {
         if (!rule?.dropdown_allow) return;
         const allow = rule.dropdown_allow.map(i => i.toLowerCase());
         
-        // Target the specific Frappe v16 dropdown structure
-        document.querySelectorAll('.dropdown-menu-item').forEach(item => {
-            // Get text from the menu-item-title span
-            const titleSpan = item.querySelector('.menu-item-title');
-            const text = titleSpan?.innerText?.trim().toLowerCase();
+        // Target all possible dropdown menu containers
+        const menuContainers = document.querySelectorAll('.dropdown-menu, .frappe-menu, .context-menu');
+        
+        menuContainers.forEach(container => {
+            // Find all dropdown items within this container
+            const items = container.querySelectorAll('.dropdown-menu-item, [role="menuitem"], .menu-item');
             
-            if (!text) return;
-            
-            // Skip if already processed
-            if (item.dataset.uiLocked) return;
-            
-            if (!allow.includes(text)) {
-                item.dataset.uiLocked = "true";
-                item.remove();
-            }
+            items.forEach(item => {
+                // Get text from various possible locations
+                const titleSpan = item.querySelector('.menu-item-title');
+                const text = (titleSpan?.innerText || item.innerText || item.textContent || '').trim().toLowerCase();
+                
+                if (!text) return;
+                
+                // Skip if already processed
+                if (item.dataset.uiLocked) return;
+                
+                console.log('Found menu item:', text); // Debug logging
+                
+                if (!allow.includes(text)) {
+                    console.log('Removing:', text); // Debug logging
+                    item.dataset.uiLocked = "true";
+                    
+                    // Try multiple removal methods
+                    item.style.display = 'none';
+                    item.remove();
+                    
+                    // Also try to disable click events
+                    item.onclick = (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        return false;
+                    };
+                }
+            });
         });
     }
 
     // ==========================
-    // INTERCEPT DROPDOWN CLICKS
+    // CONTINUOUS MONITORING
     // ==========================
-    function interceptDropdownClick() {
-        // Find the sidebar dropdown toggle button (the three dots menu)
-        const dropdownToggles = document.querySelectorAll('[data-toggle="dropdown"], .dropdown-toggle');
+    function startContinuousMonitoring() {
+        const rule = getActiveRule();
+        if (!rule) return;
         
-        dropdownToggles.forEach(toggle => {
-            if (toggle.dataset.intercepted) return;
-            toggle.dataset.intercepted = "true";
-            
-            toggle.addEventListener('click', () => {
-                const rule = getActiveRule();
-                if (!rule) return;
-                
-                // Filter dropdown items after short delays to ensure DOM is ready
-                setTimeout(() => filterDropdown(rule), 50);
-                setTimeout(() => filterDropdown(rule), 150);
-                setTimeout(() => filterDropdown(rule), 300);
-            });
-        });
+        // Run filter continuously
+        setInterval(() => {
+            filterDropdown(rule);
+        }, 100); // Check every 100ms
     }
 
     // ==========================
@@ -106,29 +116,32 @@
 
         enforceLanding(rule);
         filterDropdown(rule);
-        interceptDropdownClick();
     }
 
     // ==========================
     // INITIALIZE
     // ==========================
-    frappe.after_ajax(enforce);
-    frappe.router.on("change", enforce);
     
-    // Run on initial load
-    $(document).ready(enforce);
-    
-    // Watch for DOM changes
-    new MutationObserver(enforce).observe(document.body, {
-        childList: true,
-        subtree: true
+    // Wait for Frappe to be fully loaded
+    frappe.ready(() => {
+        if (isAdmin()) return;
+        
+        console.log('UI Lock initialized for Sales User');
+        
+        // Start continuous monitoring
+        startContinuousMonitoring();
+        
+        // Also hook into various Frappe events
+        frappe.after_ajax(enforce);
+        frappe.router.on("change", enforce);
+        
+        // Watch for DOM changes with MutationObserver
+        new MutationObserver(() => {
+            const rule = getActiveRule();
+            if (rule) filterDropdown(rule);
+        }).observe(document.body, {
+            childList: true,
+            subtree: true
+        });
     });
-    
-    // Also run periodically for the first few seconds
-    let attempts = 0;
-    const interval = setInterval(() => {
-        enforce();
-        attempts++;
-        if (attempts > 10) clearInterval(interval);
-    }, 500);
 })();
