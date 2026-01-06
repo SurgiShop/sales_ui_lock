@@ -5,14 +5,14 @@
     const ROLE_RULES = {
         "Sales User": {
             landing: "selling",
-            dropdown_allow: [
-                "Reload",
-                "Toggle Full Width",
-                "Toggle Theme"
+            dropdown_block: [
+                "Desktop",
+                "Edit Sidebar", 
+                "Website",
+                "Help",
+                "Session Defaults"
             ]
         }
-        // Future roles go here:
-        // "Procurement User": { ... }
     };
     const ADMIN_ROLES = ["System Manager"];
 
@@ -20,17 +20,14 @@
     // HELPERS
     // ==========================
     function hasRole(role) {
-        if (!frappe || !frappe.user_roles) return false;
-        return frappe.user_roles.includes(role);
+        return frappe?.user_roles?.includes(role) || false;
     }
 
     function isAdmin() {
-        if (!frappe || !frappe.user_roles) return false;
         return ADMIN_ROLES.some(hasRole);
     }
 
     function getActiveRule() {
-        if (!frappe || !frappe.user_roles) return null;
         for (const role in ROLE_RULES) {
             if (hasRole(role)) return ROLE_RULES[role];
         }
@@ -41,131 +38,108 @@
     // FORCE LANDING MODULE
     // ==========================
     function enforceLanding(rule) {
-        if (!rule?.landing) return;
-        setTimeout(() => {
-            const path = window.location.pathname;
-            const target = `/app/${rule.landing}`;
-            if (!path.startsWith(target)) {
-                frappe.set_route(rule.landing);
-            }
-        }, 300);
+        if (!rule?.landing || !frappe?.set_route) return;
+        
+        const path = window.location.pathname;
+        const target = `/app/${rule.landing}`;
+        
+        if (!path.startsWith(target)) {
+            frappe.set_route(rule.landing);
+        }
     }
 
     // ==========================
-    // AGGRESSIVE DROPDOWN FILTER
+    // DISABLE MENU ITEMS
     // ==========================
-    function filterDropdown(rule) {
-        if (!rule?.dropdown_allow) return;
-        const allow = rule.dropdown_allow.map(i => i.toLowerCase());
+    function disableMenuItems(rule) {
+        if (!rule?.dropdown_block) return;
         
-        // Target all possible dropdown menu containers
-        const menuContainers = document.querySelectorAll('.dropdown-menu, .frappe-menu, .context-menu');
+        const block = rule.dropdown_block.map(i => i.toLowerCase());
         
-        menuContainers.forEach(container => {
-            // Find all dropdown items within this container
-            const items = container.querySelectorAll('.dropdown-menu-item, [role="menuitem"], .menu-item');
+        // Find all dropdown menu items
+        document.querySelectorAll('.dropdown-menu-item').forEach(item => {
+            const titleSpan = item.querySelector('.menu-item-title');
+            const text = titleSpan?.innerText?.trim().toLowerCase();
             
-            items.forEach(item => {
-                // Get text from various possible locations
-                const titleSpan = item.querySelector('.menu-item-title');
-                const text = (titleSpan?.innerText || item.innerText || item.textContent || '').trim().toLowerCase();
-                
-                if (!text) return;
-                
-                // Skip if already processed
-                if (item.dataset.uiLocked) return;
-                
-                console.log('Found menu item:', text); // Debug logging
-                
-                if (!allow.includes(text)) {
-                    console.log('Removing:', text); // Debug logging
-                    item.dataset.uiLocked = "true";
-                    
-                    // Try multiple removal methods
-                    item.style.display = 'none';
-                    item.remove();
-                    
-                    // Also try to disable click events
-                    item.onclick = (e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        return false;
-                    };
-                }
-            });
+            if (!text || !block.includes(text)) return;
+            
+            // Skip if already disabled
+            if (item.dataset.disabled) return;
+            item.dataset.disabled = "true";
+            
+            // Style it as disabled
+            item.style.opacity = "0.5";
+            item.style.cursor = "not-allowed";
+            item.style.pointerEvents = "none";
+            
+            // Block all click events (belt and suspenders)
+            item.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+                return false;
+            }, true);
+            
+            // Also block on the link itself if it exists
+            const link = item.querySelector('a');
+            if (link) {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                    return false;
+                }, true);
+                link.style.pointerEvents = "none";
+            }
         });
     }
 
     // ==========================
-    // CONTINUOUS MONITORING
-    // ==========================
-    function startContinuousMonitoring() {
-        const rule = getActiveRule();
-        if (!rule) return;
-        
-        // Run filter continuously
-        setInterval(() => {
-            filterDropdown(rule);
-        }, 100); // Check every 100ms
-    }
-
-    // ==========================
-    // ENFORCE UI LOCK
+    // MAIN ENFORCEMENT
     // ==========================
     function enforce() {
-        if (!frappe || !frappe.user_roles) return; // Safety check
-        if (isAdmin()) return;
+        // Don't run if Frappe isn't ready or user is admin
+        if (!frappe?.user_roles || isAdmin()) return;
+        
         const rule = getActiveRule();
         if (!rule) return;
 
         enforceLanding(rule);
-        filterDropdown(rule);
+        disableMenuItems(rule);
     }
 
     // ==========================
-    // INITIALIZE
+    // INITIALIZE WHEN READY
     // ==========================
-    
-    // Wait for Frappe to be fully loaded
-    function initialize() {
-        if (!frappe || !frappe.user_roles) {
-            // Frappe not ready yet, try again in 100ms
-            setTimeout(initialize, 100);
+    function init() {
+        // Wait for Frappe to be ready
+        if (!frappe?.user_roles) {
+            setTimeout(init, 200);
             return;
         }
-        
-        if (isAdmin()) {
-            console.log('UI Lock: Admin user detected, not applying restrictions');
-            return;
-        }
-        
-        console.log('UI Lock: Initialized for restricted user');
-        console.log('User roles:', frappe.user_roles);
-        
-        // Start continuous monitoring
-        startContinuousMonitoring();
-        
-        // Also hook into various Frappe events
-        frappe.after_ajax(enforce);
-        
-        if (frappe.router) {
-            frappe.router.on("change", enforce);
-        }
-        
-        // Watch for DOM changes with MutationObserver
-        new MutationObserver(() => {
-            const rule = getActiveRule();
-            if (rule) filterDropdown(rule);
-        }).observe(document.body, {
+
+        // Don't run for admins
+        if (isAdmin()) return;
+
+        // Run enforcement continuously
+        setInterval(enforce, 200);
+
+        // Also run on DOM changes
+        const observer = new MutationObserver(enforce);
+        observer.observe(document.body, {
             childList: true,
             subtree: true
         });
+
+        // Run on route changes
+        if (frappe.router) {
+            frappe.router.on("change", () => {
+                const rule = getActiveRule();
+                if (rule) enforceLanding(rule);
+            });
+        }
     }
-    
+
     // Start initialization
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initialize);
-    } else {
-        initialize();
-    }
+    init();
 })();
