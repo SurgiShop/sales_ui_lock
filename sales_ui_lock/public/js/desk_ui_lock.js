@@ -151,3 +151,14 @@
 
     init();
 })();
+
+function removeWorkspaceMenu() {
+    if (!frappe?.ui?.toolbar?.user_menu) return;
+
+    try {
+        frappe.ui.toolbar.user_menu.remove_item("Workspaces");
+    } catch (e) {
+        // already removed
+    }
+}
+
