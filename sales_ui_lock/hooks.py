@@ -21,7 +21,7 @@ add_to_apps_screen = [
 		"name": "sales_ui_lock",
 		"logo": "/assets/sales_ui_lock/sales_ui_lock/sales-ui-lock-icon.svg",
 		"title": "Sales User",
-		"route": "/app/sales-ui-lock",
+		"route": "/app/sales-user",
 		"has_permission": "erpnext.check_app_permission",
 	}
 ]
@@ -29,10 +29,9 @@ add_to_apps_screen = [
 # before_install = "sales_ui_lock.install.before_install"
 after_install = "sales_ui_lock.sales_ui_lock.install.after_install"
 
-# Ensure condition options are always applied after migrations, so user-managed
-# options win over fixture defaults.
+# Ensure workspace sidebar is set up after migrations
 after_migrate = [
 	"sales_ui_lock.sales_ui_lock.install.cleanup_old_workspaces",
-	"sales_ui_lock.sales_ui_lock.install.fix_settings_defaults"
-
+	"sales_ui_lock.sales_ui_lock.install.fix_settings_defaults",
+	"sales_ui_lock.sales_ui_lock.workspace_sidebar.ensure_sales_sidebar"
 ]
