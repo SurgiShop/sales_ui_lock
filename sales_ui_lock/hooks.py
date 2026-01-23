@@ -9,3 +9,9 @@ app_include_js = [
     "/assets/sales_ui_lock/js/desk_ui_lock.js"
 ]
 
+fixtures = [
+    {
+        "dt": "Workspace",
+        "filters": [["name", "=", "Sales User"]]
+    }
+]
