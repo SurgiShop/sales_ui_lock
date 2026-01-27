@@ -13,6 +13,7 @@
         "Website",
         "Help",
         "Session Defaults"
+        "User Settings"
       ]
     }
   };
