@@ -9,6 +9,7 @@ required_frappe_version = ">=16.0.0"
 app_logo_url = "/assets/sales_ui_lock/sales_ui_lock/sales-ui-lock-icon.svg"
 
 app_include_js = [
-    "/assets/sales_ui_lock/js/desk_ui_lock.js"
+    "/assets/sales_ui_lock/js/desk_ui_lock.js",
+    "/assets/sales_ui_lock/js/disable_navbar_items.js"
 ]
 
