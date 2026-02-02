@@ -5,8 +5,7 @@
   const ROLE_RULES = {
     "Sales User": {
       landing: "selling",
-      // Whitelist keywords to prevent the "Route Loop"
-      // Added "item" so they can access the Item DocType
+      // Whitelist allows access to Selling, Items, and Reports
       allowed_paths: ["selling", "sales", "customer", "quotation", "report", "query-report", "print", "item"],
       dropdown_block: [
         "Workspaces",
@@ -45,18 +44,15 @@
     if (!rule?.landing || !frappe?.get_route_str) return;
 
     const currentRoute = frappe.get_route_str().toLowerCase();
-    
-    // Check if the current route contains any of our allowed keywords
     const isAllowed = rule.allowed_paths.some(path => currentRoute.includes(path.toLowerCase()));
 
-    // Redirect to landing if the route is empty or not in the whitelist
     if (!currentRoute || !isAllowed) {
       frappe.set_route(rule.landing);
     }
   }
 
   // ==========================
-  // UI CLEANUP
+  // UI CLEANUP (AGGRESSIVE)
   // ==========================
   function removeWorkspacesMenu() {
     if (frappe?.ui?.toolbar?.user_menu?.remove_item) {
@@ -67,18 +63,25 @@
   }
 
   function hideUserSettings() {
-    // Specifically targets the "User Settings" link in the Avatar dropdown
-    // This is migration-proof as it ignores the Navbar Settings database
-    const userSettingsLink = document.querySelector('.dropdown-item[data-label="User Settings"]');
-    if (userSettingsLink) {
-      userSettingsLink.style.display = 'none';
-      
-      // Also hide the divider line immediately following it if it exists
-      const divider = userSettingsLink.nextElementSibling;
-      if (divider && divider.classList.contains('dropdown-divider')) {
-          divider.style.display = 'none';
-      }
-    }
+    // Targets the exact element from your screenshot using multiple selector strategies
+    const selectors = [
+      '.dropdown-item[data-label="User Settings"]', // Standard Label
+      'a[onclick*="route_to_user"]',                // Target by the Action function
+      'a[href*="user-settings"]'                    // Target by potential URL
+    ];
+
+    selectors.forEach(selector => {
+      document.querySelectorAll(selector).forEach(el => {
+        // Use !important to override Vue.js inline styles
+        el.style.setProperty('display', 'none', 'important');
+        
+        // Hide the parent <li> if it exists to prevent empty gaps in the menu
+        const parentLi = el.closest('li');
+        if (parentLi) {
+          parentLi.style.setProperty('display', 'none', 'important');
+        }
+      });
+    });
   }
 
   function disableDropdownItems(rule) {
@@ -93,7 +96,7 @@
       if (item.dataset.locked) return;
 
       item.dataset.locked = "1";
-      item.style.display = "none"; 
+      item.style.setProperty('display', 'none', 'important');
     });
   }
 
@@ -121,20 +124,20 @@
       return;
     }
 
+    // Admins are exempt to prevent locking yourself out of settings
     if (isAdmin()) return;
 
-    // Re-apply on every page change (Frappe/Vue navigation)
+    // Trigger on Frappe page change events
     $(document).on("page-change", function() {
         setTimeout(enforce, 200);
     });
 
-    // Persistence to catch dynamic elements (like the Avatar dropdown)
-    setInterval(enforce, 1000);
+    // Frequent check to catch the User Menu when it is clicked/rendered
+    setInterval(enforce, 800);
 
     enforce();
   }
 
-  // Start the script once the document is ready
   $(document).ready(() => init());
 
 })();
