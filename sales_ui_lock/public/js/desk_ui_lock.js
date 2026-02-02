@@ -12,7 +12,7 @@
         "Desktop",
         "Website",
         "Help",
-        "Session Defaults"
+        "Session Defaults",
         "User Settings"
       ]
     }
