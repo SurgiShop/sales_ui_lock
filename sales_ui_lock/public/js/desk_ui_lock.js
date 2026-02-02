@@ -6,7 +6,7 @@
     "Sales User": {
       landing: "selling",
       // Whitelist keywords that are ALLOWED in the URL
-      allowed_paths: ["selling", "sales", "customer", "quotation", "report", "query-report", "print"],
+      allowed_paths: ["selling", "sales", "customer", "quotation", "report", "query-report", "print", "item"],
       dropdown_block: [
         "Workspaces",
         "Assets",
