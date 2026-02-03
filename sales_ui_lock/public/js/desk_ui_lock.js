@@ -52,7 +52,7 @@
   }
 
   // ==========================
-  // UI CLEANUP (AGGRESSIVE)
+  // UI CLEANUP (SURGICAL)
   // ==========================
   function removeWorkspacesMenu() {
     if (frappe?.ui?.toolbar?.user_menu?.remove_item) {
@@ -63,25 +63,19 @@
   }
 
   function hideUserSettings() {
-    // Targets the exact element from your screenshot using multiple selector strategies
-    const selectors = [
-      '.dropdown-item[data-label="User Settings"]', // Standard Label
-      'a[onclick*="route_to_user"]',                // Target by the Action function
-      'a[href*="user-settings"]'                    // Target by potential URL
-    ];
-
-    selectors.forEach(selector => {
-      document.querySelectorAll(selector).forEach(el => {
-        // Use !important to override Vue.js inline styles
-        el.style.setProperty('display', 'none', 'important');
-        
-        // Hide the parent <li> if it exists to prevent empty gaps in the menu
-        const parentLi = el.closest('li');
-        if (parentLi) {
-          parentLi.style.setProperty('display', 'none', 'important');
-        }
-      });
-    });
+    // Target the specific button element found in your HTML inspection
+    const targetButton = document.querySelector('button[onclick*="frappe.ui.toolbar.route_to_user()"]');
+    
+    if (targetButton) {
+      // Hide the button itself
+      targetButton.style.setProperty('display', 'none', 'important');
+      
+      // Hide the parent list item (li) to remove menu gaps
+      const parentLi = targetButton.closest('li');
+      if (parentLi) {
+        parentLi.style.setProperty('display', 'none', 'important');
+      }
+    }
   }
 
   function disableDropdownItems(rule) {
@@ -124,16 +118,29 @@
       return;
     }
 
-    // Admins are exempt to prevent locking yourself out of settings
     if (isAdmin()) return;
 
-    // Trigger on Frappe page change events
+    // --- HEAVY DUTY CSS INJECTION ---
+    // This hides the button via CSS immediately upon page load
+    const style = document.createElement('style');
+    style.innerHTML = `
+      button[onclick*="frappe.ui.toolbar.route_to_user()"] {
+        display: none !important;
+      }
+      /* Optional: Hide the divider line that usually sits above Logout */
+      button[onclick*="frappe.ui.toolbar.route_to_user()"] + .dropdown-divider {
+        display: none !important;
+      }
+    `;
+    document.head.appendChild(style);
+
+    // Re-apply on Frappe page changes
     $(document).on("page-change", function() {
         setTimeout(enforce, 200);
     });
 
-    // Frequent check to catch the User Menu when it is clicked/rendered
-    setInterval(enforce, 800);
+    // Loop to catch dynamic Vue renders (like opening the profile menu)
+    setInterval(enforce, 1000);
 
     enforce();
   }
