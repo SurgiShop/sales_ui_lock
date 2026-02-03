@@ -6,7 +6,7 @@
     "Sales User": {
       landing: "selling",
       // Allowed paths ensure navigation to Items, Sales docs, and Reports works
-      allowed_paths: ["selling", "sales", "customer", "quotation", "report", "query-report", "print", "item"],
+      allowed_paths: ["selling", "sales", "customer", "quotation", "report", "query-report", "print", "item", "support"],
       dropdown_block: [
         "Workspaces",
         "Assets",
