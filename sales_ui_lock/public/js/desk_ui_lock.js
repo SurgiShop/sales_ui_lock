@@ -5,7 +5,7 @@
   const ROLE_RULES = {
     "Sales User": {
       landing: "selling",
-      // Whitelist allows access to Selling, Items, and Reports
+      // Allowed paths ensure navigation to Items, Sales docs, and Reports works
       allowed_paths: ["selling", "sales", "customer", "quotation", "report", "query-report", "print", "item"],
       dropdown_block: [
         "Workspaces",
@@ -38,7 +38,34 @@
   }
 
   // ==========================
-  // FORCE LANDING WORKSPACE
+  // GLOBAL UI ACTIONS (Everyone)
+  // ==========================
+  function applyGlobalStyles() {
+    // This injects a CSS rule that hides User Settings for EVERYONE
+    // regardless of role or session state.
+    if (document.getElementById('global-ui-hide')) return;
+
+    const style = document.createElement('style');
+    style.id = 'global-ui-hide';
+    style.innerHTML = `
+      /* Target the button by its specific action attribute */
+      button[onclick*="frappe.ui.toolbar.route_to_user()"] {
+        display: none !important;
+      }
+      /* Target the parent list item (li) for a clean menu */
+      li:has(button[onclick*="frappe.ui.toolbar.route_to_user()"]) {
+        display: none !important;
+      }
+      /* Hide the divider if it follows the hidden button */
+      button[onclick*="frappe.ui.toolbar.route_to_user()"] + .dropdown-divider {
+        display: none !important;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  // ==========================
+  // ROLE-BASED ACTIONS (Sales Users)
   // ==========================
   function enforceLanding(rule) {
     if (!rule?.landing || !frappe?.get_route_str) return;
@@ -51,30 +78,11 @@
     }
   }
 
-  // ==========================
-  // UI CLEANUP (SURGICAL)
-  // ==========================
   function removeWorkspacesMenu() {
     if (frappe?.ui?.toolbar?.user_menu?.remove_item) {
         try {
             frappe.ui.toolbar.user_menu.remove_item("Workspaces");
         } catch (e) {}
-    }
-  }
-
-  function hideUserSettings() {
-    // Target the specific button element found in your HTML inspection
-    const targetButton = document.querySelector('button[onclick*="frappe.ui.toolbar.route_to_user()"]');
-    
-    if (targetButton) {
-      // Hide the button itself
-      targetButton.style.setProperty('display', 'none', 'important');
-      
-      // Hide the parent list item (li) to remove menu gaps
-      const parentLi = targetButton.closest('li');
-      if (parentLi) {
-        parentLi.style.setProperty('display', 'none', 'important');
-      }
     }
   }
 
@@ -98,6 +106,10 @@
   // MAIN ENFORCER
   // ==========================
   function enforce() {
+    // 1. Always apply Global Styles first
+    applyGlobalStyles();
+
+    // 2. Apply Role-Specific logic
     if (!frappe?.user_roles || isAdmin()) return;
 
     const rule = getActiveRule();
@@ -106,7 +118,6 @@
     enforceLanding(rule);
     removeWorkspacesMenu();
     disableDropdownItems(rule);
-    hideUserSettings();
   }
 
   // ==========================
@@ -118,28 +129,15 @@
       return;
     }
 
-    if (isAdmin()) return;
+    // Apply global style immediately for all users
+    applyGlobalStyles();
 
-    // --- HEAVY DUTY CSS INJECTION ---
-    // This hides the button via CSS immediately upon page load
-    const style = document.createElement('style');
-    style.innerHTML = `
-      button[onclick*="frappe.ui.toolbar.route_to_user()"] {
-        display: none !important;
-      }
-      /* Optional: Hide the divider line that usually sits above Logout */
-      button[onclick*="frappe.ui.toolbar.route_to_user()"] + .dropdown-divider {
-        display: none !important;
-      }
-    `;
-    document.head.appendChild(style);
-
-    // Re-apply on Frappe page changes
+    // Setup listeners for navigation changes
     $(document).on("page-change", function() {
         setTimeout(enforce, 200);
     });
 
-    // Loop to catch dynamic Vue renders (like opening the profile menu)
+    // Frequent check to ensure dynamic Vue menus stay clean
     setInterval(enforce, 1000);
 
     enforce();
