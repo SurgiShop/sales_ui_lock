@@ -13,3 +13,8 @@ app_include_js = [
     "/assets/sales_ui_lock/js/disable_navbar_items.js"
 ]
 
+# Run when the app is first installed
+after_install = "sales_ui_lock.path.to.workspace_sidebar.ensure_sales_sidebar"
+
+# Run every time 'bench migrate' is executed (recommended for UI locks)
+after_migrate = "sales_ui_lock.path.to.workspace_sidebar.ensure_sales_sidebar"
