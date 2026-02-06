@@ -6,7 +6,7 @@
     "Sales User": {
       landing: "selling",
       // Allowed paths ensure navigation to Items, Sales docs, and Reports works
-      allowed_paths: ["selling", "sales", "customer", "quotation", "report", "query-report", "print", "item", "support"],
+      allowed_paths: ["selling", "sales", "customer", "quotation", "report", "query-report", "print", "item", "support", "purchase", "purchase-order", "supplier"],
       dropdown_block: [
         "Workspaces",
         "Assets",
@@ -33,9 +33,17 @@
   }
 
   function getActiveRule() {
-    const userRole = Object.keys(ROLE_RULES).find(role => hasRole(role));
-    return userRole ? ROLE_RULES[userRole] : null;
-  }
+  // Sales User restrictions apply ONLY if user is Sales-only
+    if (
+      hasRole("Sales User") &&
+      !hasRole("Acquisitions") &&
+      !isAdmin()
+    ) {
+      return ROLE_RULES["Sales User"];
+    }
+    return null;
+}
+
 
   // ==========================
   // GLOBAL UI ACTIONS (Everyone)
