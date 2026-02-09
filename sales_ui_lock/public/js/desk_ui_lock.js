@@ -5,7 +5,19 @@
   const ROLE_RULES = {
     "Sales User": {
       landing: "selling",
-      // Allowed paths ensure navigation to Items, Sales docs, and Reports works
+      allowed_paths: ["selling", "sales", "customer", "quotation", "report", "query-report", "print", "item", "support"],
+      dropdown_block: [
+        "Workspaces",
+        "Assets",
+        "Desktop",
+        "Website",
+        "Help",
+        "Session Defaults",
+        "User Settings"
+      ]
+    },
+    "Acquisitions": {
+      landing: "selling",
       allowed_paths: ["selling", "sales", "customer", "quotation", "report", "query-report", "print", "item", "support", "purchase", "purchase-order", "supplier"],
       dropdown_block: [
         "Workspaces",
@@ -33,38 +45,34 @@
   }
 
   function getActiveRule() {
-  // Sales User restrictions apply ONLY if user is Sales-only
-    if (
-      hasRole("Sales User") &&
-      !hasRole("Acquisitions") &&
-      !isAdmin()
-    ) {
+    // Acquisitions gets priority (includes purchase access)
+    if (hasRole("Acquisitions") && !isAdmin()) {
+      return ROLE_RULES["Acquisitions"];
+    }
+    
+    // Sales User gets restrictions (no purchase access)
+    if (hasRole("Sales User") && !isAdmin()) {
       return ROLE_RULES["Sales User"];
     }
+    
     return null;
-}
-
+  }
 
   // ==========================
   // GLOBAL UI ACTIONS (Everyone)
   // ==========================
   function applyGlobalStyles() {
-    // This injects a CSS rule that hides User Settings for EVERYONE
-    // regardless of role or session state.
     if (document.getElementById('global-ui-hide')) return;
 
     const style = document.createElement('style');
     style.id = 'global-ui-hide';
     style.innerHTML = `
-      /* Target the button by its specific action attribute */
       button[onclick*="frappe.ui.toolbar.route_to_user()"] {
         display: none !important;
       }
-      /* Target the parent list item (li) for a clean menu */
       li:has(button[onclick*="frappe.ui.toolbar.route_to_user()"]) {
         display: none !important;
       }
-      /* Hide the divider if it follows the hidden button */
       button[onclick*="frappe.ui.toolbar.route_to_user()"] + .dropdown-divider {
         display: none !important;
       }
@@ -73,7 +81,7 @@
   }
 
   // ==========================
-  // ROLE-BASED ACTIONS (Sales Users)
+  // ROLE-BASED ACTIONS
   // ==========================
   function enforceLanding(rule) {
     if (!rule?.landing || !frappe?.get_route_str) return;
@@ -88,9 +96,9 @@
 
   function removeWorkspacesMenu() {
     if (frappe?.ui?.toolbar?.user_menu?.remove_item) {
-        try {
-            frappe.ui.toolbar.user_menu.remove_item("Workspaces");
-        } catch (e) {}
+      try {
+        frappe.ui.toolbar.user_menu.remove_item("Workspaces");
+      } catch (e) {}
     }
   }
 
@@ -114,10 +122,8 @@
   // MAIN ENFORCER
   // ==========================
   function enforce() {
-    // 1. Always apply Global Styles first
     applyGlobalStyles();
 
-    // 2. Apply Role-Specific logic
     if (!frappe?.user_roles || isAdmin()) return;
 
     const rule = getActiveRule();
@@ -137,15 +143,12 @@
       return;
     }
 
-    // Apply global style immediately for all users
     applyGlobalStyles();
 
-    // Setup listeners for navigation changes
     $(document).on("page-change", function() {
-        setTimeout(enforce, 200);
+      setTimeout(enforce, 200);
     });
 
-    // Frequent check to ensure dynamic Vue menus stay clean
     setInterval(enforce, 1000);
 
     enforce();
