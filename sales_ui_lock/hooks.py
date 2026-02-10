@@ -8,6 +8,9 @@ required_apps = ["frappe/erpnext"]
 required_frappe_version = ">=16.0.0"
 app_logo_url = "/assets/sales_ui_lock/sales_ui_lock/sales-ui-lock-icon.svg"
 
+# Run sidebar setup on install and migrate so every instance gets the locked menu
+after_install = ["sales_ui_lock.workspace_sidebar.ensure_sales_sidebar"]
+after_migrate = ["sales_ui_lock.workspace_sidebar.ensure_sales_sidebar"]
 
 app_include_js = [
     "/assets/sales_ui_lock/js/desk_ui_lock.js",
