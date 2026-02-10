@@ -15,3 +15,6 @@ app_include_js = [
     "/assets/sales_ui_lock/js/disable_navbar_items.js"
 ]
 
+after_migrate = [
+    "sales_ui_lock.workspace_sidebar.setup_sales_workspace_sidebar"
+
