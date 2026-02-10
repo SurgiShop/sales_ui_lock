@@ -24,9 +24,13 @@ app_include_js = [
 # ======================
 # SERVER HOOKS
 # ======================
+# ======================
+# SERVER HOOKS
+# ======================
 after_migrate = [
     "sales_ui_lock.workspace_sidebar.setup_sales_workspace_sidebar"
 ]
+
 
 # optionally, for new installs only
 # after_install = "sales_ui_lock.workspace_sidebar.setup_sales_workspace_sidebar"
