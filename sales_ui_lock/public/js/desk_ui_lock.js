@@ -5,7 +5,28 @@
   const ROLE_RULES = {
     "Sales User": {
       landing: "selling",
-      allowed_paths: ["selling", "sales", "customer", "quotation", "report", "query-report", "print", "item", "support"],
+      allowed_paths: [
+        "selling", 
+        "sales", 
+        "customer", 
+        "quotation", 
+        "report", 
+        "query-report", 
+        "print", 
+        "item", 
+        "support",
+        "form"
+      ],
+      allowed_doctypes: [
+        "customer",
+        "quotation",
+        "sales order",
+        "sales invoice",
+        "delivery note",
+        "item",
+        "contact",
+        "address"
+      ],
       dropdown_block: [
         "Workspaces",
         "Assets",
@@ -18,7 +39,35 @@
     },
     "Acquisitions": {
       landing: "selling",
-      allowed_paths: ["selling", "sales", "customer", "quotation", "report", "query-report", "print", "item", "support", "purchase", "purchase-order", "supplier"],
+      allowed_paths: [
+        "selling", 
+        "sales", 
+        "customer", 
+        "quotation", 
+        "report", 
+        "query-report", 
+        "print", 
+        "item", 
+        "support", 
+        "purchase", 
+        "purchase-order", 
+        "supplier",
+        "form"
+      ],
+      allowed_doctypes: [
+        "customer",
+        "quotation",
+        "sales order",
+        "sales invoice",
+        "delivery note",
+        "item",
+        "contact",
+        "address",
+        "purchase order",
+        "supplier",
+        "purchase receipt",
+        "purchase invoice"
+      ],
       dropdown_block: [
         "Workspaces",
         "Assets",
@@ -87,6 +136,19 @@
     if (!rule?.landing || !frappe?.get_route_str) return;
 
     const currentRoute = frappe.get_route_str().toLowerCase();
+    const routeParts = currentRoute.split('/');
+    
+    // If viewing a form, check if the doctype is allowed
+    if (routeParts[0] === 'form' && routeParts.length >= 2) {
+      const doctype = routeParts[1].toLowerCase().replace(/-/g, ' ');
+      
+      // Check if this doctype is in allowed_doctypes
+      if (rule.allowed_doctypes && rule.allowed_doctypes.some(dt => dt.toLowerCase() === doctype)) {
+        return; // Allow this form view
+      }
+    }
+    
+    // Check if current path is allowed
     const isAllowed = rule.allowed_paths.some(path => currentRoute.includes(path.toLowerCase()));
 
     if (!currentRoute || !isAllowed) {
