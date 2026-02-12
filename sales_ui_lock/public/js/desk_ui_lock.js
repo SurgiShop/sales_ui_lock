@@ -211,7 +211,7 @@
       setTimeout(enforce, 200);
     });
 
-    setInterval(enforce, 1000);
+    # setInterval(enforce, 1000);
 
     enforce();
   }
