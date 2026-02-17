@@ -1,51 +1,88 @@
 /**
- * Global UI Tweaks: Force Hide User Settings
- * This version uses a MutationObserver to ensure the item stays hidden
- * even if Frappe re-renders the navbar dynamically.
+ * Frappe v16 — Force-hide "User Settings" from the sidebar.
+ *
+ * v16 CHANGED: User Settings is no longer in a navbar dropdown.
+ * It is now rendered inside the LEFT SIDEBAR bottom panel, typically as:
+ *
+ *   <a data-label="User Settings" href="/app/user-settings">...</a>
+ *   or as a sidebar-item with text "User Settings"
+ *
+ * This file handles that with:
+ *  1. An injected CSS block (the nuclear option — survives re-renders)
+ *  2. A jQuery sweep on load and on sidebar-related events
+ *  3. A MutationObserver watchdog for dynamic re-renders
  */
 
-(function() {
-    const targetLabel = "User Settings"; // Or "My Settings" depending on your translation
+(function () {
+  const TARGET_LABEL = "User Settings";
+  const TARGET_SLUG  = "user-settings";  // matches href="/app/user-settings"
 
-    const hideItem = () => {
-        // Hide by data-label (standard) and by href (fallback)
-        const selector = `li[data-label="${targetLabel}"], a[href*="user-settings"]`;
-        const $el = $(selector);
-        
-        if ($el.length) {
-            $el.hide();
-            // Also hide the parent list item if we found the anchor link
-            $el.closest('li').css('display', 'none !important');
-        }
-    };
+  // -----------------------------------------------------------------------
+  // 1. CSS BLOCK — injected once, persists across all re-renders
+  // -----------------------------------------------------------------------
+  $("<style>")
+    .prop("type", "text/css")
+    .html(`
+      [data-label="${TARGET_LABEL}"],
+      [data-label="${TARGET_LABEL.toLowerCase()}"],
+      a[href*="${TARGET_SLUG}"],
+      li:has(a[href*="${TARGET_SLUG}"]) {
+        display: none !important;
+      }
+    `)
+    .appendTo("head");
 
-    // 1. Run immediately
-    $(document).ready(hideItem);
-
-    // 2. Run whenever the navbar dropdown is clicked
-    $(document).on('click', '.navbar-user', function() {
-        setTimeout(hideItem, 1);
-        setTimeout(hideItem, 50); // Second pass for slower renders
+  // -----------------------------------------------------------------------
+  // 2. DOM sweep — hides any surviving elements by text content or attr
+  // -----------------------------------------------------------------------
+  const hideItem = () => {
+    // data-label attribute (v16 primary selector)
+    $(`[data-label="${TARGET_LABEL}"], [data-label="${TARGET_LABEL.toLowerCase()}"]`).each(function () {
+      $(this).css("display", "none");
+      $(this).closest("li").css("display", "none");
     });
 
-    // 3. Persistent Watchdog (Mutation Observer)
-    const observer = new MutationObserver((mutations) => {
-        hideItem();
+    // href-based (covers anchor tags with /app/user-settings)
+    $(`a[href*="${TARGET_SLUG}"]`).each(function () {
+      $(this).css("display", "none");
+      $(this).closest("li").css("display", "none");
     });
 
-    observer.observe(document.body, {
-        childList: true,
-        subtree: true
+    // Text-content sweep (fallback for elements without data-label)
+    $(".dropdown-item, .sidebar-item, .standard-sidebar-item, .sidebar-menu-item, li > a").each(function () {
+      if ($(this).text().trim() === TARGET_LABEL) {
+        $(this).css("display", "none");
+        $(this).closest("li").css("display", "none");
+      }
     });
+  };
 
-    // 4. CSS Safety Net (The "Nuclear" option)
-    $('<style>')
-        .prop('type', 'text/css')
-        .html(`
-            li[data-label="${targetLabel}"], 
-            a[href*="user-settings"] { 
-                display: none !important; 
-            }
-        `)
-        .appendTo('head');
+  // -----------------------------------------------------------------------
+  // 3. Run on document ready
+  // -----------------------------------------------------------------------
+  $(document).ready(hideItem);
+
+  // -----------------------------------------------------------------------
+  // 4. Re-run on Frappe page events (v16 uses page-change heavily)
+  // -----------------------------------------------------------------------
+  $(document).on("page-change", function () {
+    setTimeout(hideItem, 50);
+    setTimeout(hideItem, 300);
+  });
+
+  // Also catch sidebar toggle and user avatar clicks (v16 bottom panel)
+  $(document).on("click", ".navbar-user, .sidebar-toggle, .user-avatar, .user-image", function () {
+    setTimeout(hideItem, 1);
+    setTimeout(hideItem, 100);
+  });
+
+  // -----------------------------------------------------------------------
+  // 5. MutationObserver watchdog — catches Frappe's dynamic re-renders
+  // -----------------------------------------------------------------------
+  const observer = new MutationObserver(hideItem);
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true
+  });
+
 })();
