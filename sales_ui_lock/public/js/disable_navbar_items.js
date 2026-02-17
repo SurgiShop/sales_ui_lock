@@ -1,88 +1,42 @@
 /**
- * Frappe v16 — Force-hide "User Settings" from the sidebar.
+ * Frappe v16 — Hide "User Settings" from the sidebar menu.
  *
- * v16 CHANGED: User Settings is no longer in a navbar dropdown.
- * It is now rendered inside the LEFT SIDEBAR bottom panel, typically as:
+ * Confirmed v16 DOM structure:
+ *   <a>
+ *     <div class="menu-item-icon">...</div>
+ *     <span class="menu-item-title">User Settings</span>
+ *   </a>
  *
- *   <a data-label="User Settings" href="/app/user-settings">...</a>
- *   or as a sidebar-item with text "User Settings"
- *
- * This file handles that with:
- *  1. An injected CSS block (the nuclear option — survives re-renders)
- *  2. A jQuery sweep on load and on sidebar-related events
- *  3. A MutationObserver watchdog for dynamic re-renders
+ * No class, href, or data-label on the <a>. Only hook is .menu-item-title text.
+ * desk_ui_lock.js also blocks this via dropdown_block — this file is a
+ * dedicated belt-and-suspenders pass that runs independently.
  */
-
 (function () {
-  const TARGET_LABEL = "User Settings";
-  const TARGET_SLUG  = "user-settings";  // matches href="/app/user-settings"
+  const TARGET = "user settings";
 
-  // -----------------------------------------------------------------------
-  // 1. CSS BLOCK — injected once, persists across all re-renders
-  // -----------------------------------------------------------------------
-  $("<style>")
-    .prop("type", "text/css")
-    .html(`
-      [data-label="${TARGET_LABEL}"],
-      [data-label="${TARGET_LABEL.toLowerCase()}"],
-      a[href*="${TARGET_SLUG}"],
-      li:has(a[href*="${TARGET_SLUG}"]) {
-        display: none !important;
-      }
-    `)
-    .appendTo("head");
-
-  // -----------------------------------------------------------------------
-  // 2. DOM sweep — hides any surviving elements by text content or attr
-  // -----------------------------------------------------------------------
-  const hideItem = () => {
-    // data-label attribute (v16 primary selector)
-    $(`[data-label="${TARGET_LABEL}"], [data-label="${TARGET_LABEL.toLowerCase()}"]`).each(function () {
-      $(this).css("display", "none");
-      $(this).closest("li").css("display", "none");
+  function hideUserSettings() {
+    document.querySelectorAll("span.menu-item-title").forEach(span => {
+      if (span.textContent?.trim().toLowerCase() !== TARGET) return;
+      const anchor = span.closest("a");
+      if (anchor) anchor.style.setProperty("display", "none", "important");
+      const li = span.closest("li");
+      if (li) li.style.setProperty("display", "none", "important");
     });
+  }
 
-    // href-based (covers anchor tags with /app/user-settings)
-    $(`a[href*="${TARGET_SLUG}"]`).each(function () {
-      $(this).css("display", "none");
-      $(this).closest("li").css("display", "none");
-    });
-
-    // Text-content sweep (fallback for elements without data-label)
-    $(".dropdown-item, .sidebar-item, .standard-sidebar-item, .sidebar-menu-item, li > a").each(function () {
-      if ($(this).text().trim() === TARGET_LABEL) {
-        $(this).css("display", "none");
-        $(this).closest("li").css("display", "none");
-      }
-    });
-  };
-
-  // -----------------------------------------------------------------------
-  // 3. Run on document ready
-  // -----------------------------------------------------------------------
-  $(document).ready(hideItem);
-
-  // -----------------------------------------------------------------------
-  // 4. Re-run on Frappe page events (v16 uses page-change heavily)
-  // -----------------------------------------------------------------------
-  $(document).on("page-change", function () {
-    setTimeout(hideItem, 50);
-    setTimeout(hideItem, 300);
+  $(document).ready(() => {
+    hideUserSettings();
+    setTimeout(hideUserSettings, 100);
+    setTimeout(hideUserSettings, 500);
+    setTimeout(hideUserSettings, 1500);
   });
 
-  // Also catch sidebar toggle and user avatar clicks (v16 bottom panel)
-  $(document).on("click", ".navbar-user, .sidebar-toggle, .user-avatar, .user-image", function () {
-    setTimeout(hideItem, 1);
-    setTimeout(hideItem, 100);
+  $(document).on("page-change", () => {
+    setTimeout(hideUserSettings, 50);
+    setTimeout(hideUserSettings, 300);
   });
 
-  // -----------------------------------------------------------------------
-  // 5. MutationObserver watchdog — catches Frappe's dynamic re-renders
-  // -----------------------------------------------------------------------
-  const observer = new MutationObserver(hideItem);
-  observer.observe(document.body, {
-    childList: true,
-    subtree: true
-  });
+  const observer = new MutationObserver(hideUserSettings);
+  observer.observe(document.body, { childList: true, subtree: true });
 
 })();
