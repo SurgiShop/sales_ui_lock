@@ -25,6 +25,7 @@
         "delivery note",
         "item",
         "contact",
+        "warranty claim",
         "address"
       ],
       dropdown_block: [
