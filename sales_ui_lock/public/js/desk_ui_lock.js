@@ -15,6 +15,7 @@
         "print",
         "item",
         "support",
+        "list",
         "form"
       ],
       allowed_doctypes: [
@@ -53,6 +54,7 @@
         "purchase",
         "purchase-order",
         "supplier",
+        "list",
         "form"
       ],
       allowed_doctypes: [
@@ -159,6 +161,11 @@
 
     const isAllowed = rule.allowed_paths.some(p => currentRoute.includes(p.toLowerCase()));
     if (!currentRoute || !isAllowed) frappe.set_route(rule.landing);
+  }
+
+  if (!currentRoute || !isAllowed) {
+    console.log("Redirecting because route is not allowed:", currentRoute); // Add this
+    frappe.set_route(rule.landing);
   }
 
   // ==========================
