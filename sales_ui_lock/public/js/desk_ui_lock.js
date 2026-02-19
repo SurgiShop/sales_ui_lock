@@ -67,6 +67,7 @@
         "purchase order",
         "supplier",
         "purchase receipt",
+        "warranty claim",
         "purchase invoice"
       ],
       dropdown_block: [
