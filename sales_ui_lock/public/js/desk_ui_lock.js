@@ -118,20 +118,35 @@
   }
 
   // ==========================
-  // MENU ITEM BLOCKING
-  //
-  // Confirmed v16 DOM structure for ALL sidebar menu items:
-  //
-  //   <a>                                        ← no class, no href, no data-label
-  //     <div class="menu-item-icon">...</div>
-  //     <span class="menu-item-title">Help</span>
-  //     <div class="menu-item-icon">...</div>    ← optional chevron, not always present
-  //   </a>
-  //
-  // Only reliable selector: span.menu-item-title inner text.
-  // We hide the parent <a> and parent <li> if one exists.
+  // HOME ICON REDIRECT
   // ==========================
+  function interceptHomeIcon(rule) {
+    if (!rule?.landing) return;
 
+    // Find the home icon link in breadcrumbs
+    document.querySelectorAll('.navbar-breadcrumbs a[href="/desk"]').forEach(link => {
+      // Check if this link contains the icon-monitor
+      if (link.querySelector('use[href="#icon-monitor"]')) {
+        // Remove existing click handlers and add our own
+        const newLink = link.cloneNode(true);
+        link.parentNode.replaceChild(newLink, link);
+        
+        newLink.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          frappe.set_route(rule.landing);
+          return false;
+        });
+        
+        // Update the href attribute as well
+        newLink.setAttribute('href', `/${rule.landing}`);
+      }
+    });
+  }
+
+  // ==========================
+  // MENU ITEM BLOCKING
+  // ==========================
   function blockMenuItems(blocked) {
     document.querySelectorAll("span.menu-item-title").forEach(span => {
       const text = span.textContent?.trim().toLowerCase();
@@ -160,12 +175,10 @@
     }
 
     const isAllowed = rule.allowed_paths.some(p => currentRoute.includes(p.toLowerCase()));
-    if (!currentRoute || !isAllowed) frappe.set_route(rule.landing);
-  }
-
-  if (!currentRoute || !isAllowed) {
-    console.log("Redirecting because route is not allowed:", currentRoute); // Add this
-    frappe.set_route(rule.landing);
+    if (!currentRoute || !isAllowed) {
+      console.log("Redirecting because route is not allowed:", currentRoute);
+      frappe.set_route(rule.landing);
+    }
   }
 
   // ==========================
@@ -180,6 +193,7 @@
 
     enforceLanding(rule);
     blockMenuItems(blocked);
+    interceptHomeIcon(rule);
   }
 
   // ==========================
@@ -203,11 +217,21 @@
 
     // Run immediately on load
     blockMenuItems(blocked);
+    interceptHomeIcon(rule);
 
     // Staggered passes on load — catches items that render slightly late
-    setTimeout(() => blockMenuItems(blocked), 100);
-    setTimeout(() => blockMenuItems(blocked), 500);
-    setTimeout(() => blockMenuItems(blocked), 1500);
+    setTimeout(() => {
+      blockMenuItems(blocked);
+      interceptHomeIcon(rule);
+    }, 100);
+    setTimeout(() => {
+      blockMenuItems(blocked);
+      interceptHomeIcon(rule);
+    }, 500);
+    setTimeout(() => {
+      blockMenuItems(blocked);
+      interceptHomeIcon(rule);
+    }, 1500);
 
     // Re-run on every Frappe page navigation
     $(document).on("page-change", () => {
@@ -220,7 +244,10 @@
     let debounceTimer = null;
     const observer = new MutationObserver(() => {
       clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(() => blockMenuItems(blocked), 50);
+      debounceTimer = setTimeout(() => {
+        blockMenuItems(blocked);
+        interceptHomeIcon(rule);
+      }, 50);
     });
     observer.observe(document.body, { childList: true, subtree: true });
 
