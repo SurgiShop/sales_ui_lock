@@ -43,77 +43,91 @@
   // ==========================
   function hideRestrictedCards() {
     const currentWorkspace = getCurrentWorkspace();
-    if (!currentWorkspace) return;
+    if (!currentWorkspace) {
+      console.log("[hide_workspace_cards] Not on a workspace, skipping");
+      return;
+    }
 
     // Check if current workspace has any card rules
     const workspaceKey = Object.keys(WORKSPACE_RULES).find(
       ws => ws.toLowerCase() === currentWorkspace
     );
-    if (!workspaceKey) return;
+    if (!workspaceKey) {
+      console.log(`[hide_workspace_cards] No rules for workspace: ${currentWorkspace}`);
+      return;
+    }
 
     const cardsToCheck = WORKSPACE_RULES[workspaceKey];
     if (!cardsToCheck || cardsToCheck.length === 0) return;
 
-    // Find all workspace cards
-    // In v16, cards are typically in .workspace-card or similar containers
-    const cardSelectors = [
-      '.workspace-card',
-      '.shortcut-widget',
-      '.widget',
-      '[data-widget-name]',
-      '.standard-widget',
-      '.grid-col'
-    ];
+    console.log(`[hide_workspace_cards] Checking cards on workspace: ${currentWorkspace}`);
 
-    cardSelectors.forEach(selector => {
-      document.querySelectorAll(selector).forEach(card => {
-        // Try to find the card label
-        const labelElements = card.querySelectorAll('.widget-title, .widget-label, .shortcut-label, h6, .card-title');
+    let cardsProcessed = 0;
+    let cardsHidden = 0;
+
+    // Find all workspace cards - cast a wide net
+    // Look for anything with widget-title inside
+    document.querySelectorAll('.widget-title').forEach(titleEl => {
+      const labelText = titleEl.textContent?.trim();
+      if (!labelText) return;
+
+      cardsProcessed++;
+
+      // Check if this card has role restrictions
+      const cardKey = Object.keys(CARD_ROLE_RULES).find(
+        key => key.toLowerCase() === labelText.toLowerCase()
+      );
+
+      if (cardKey) {
+        console.log(`[hide_workspace_cards] Found restricted card: "${labelText}"`);
+        const allowedRoles = CARD_ROLE_RULES[cardKey];
         
-        labelElements.forEach(labelEl => {
-          const labelText = labelEl.textContent?.trim();
-          if (!labelText) return;
-
-          // Check if this card has role restrictions
-          const cardKey = Object.keys(CARD_ROLE_RULES).find(
-            key => key.toLowerCase() === labelText.toLowerCase()
-          );
-
-          if (cardKey) {
-            const allowedRoles = CARD_ROLE_RULES[cardKey];
-            
-            // Hide if user doesn't have any of the allowed roles
-            if (!hasAnyRole(allowedRoles)) {
-              // Hide the entire card container
-              const cardContainer = card.closest('.grid-col') || card.closest('.widget') || card;
-              if (cardContainer) {
-                cardContainer.style.setProperty("display", "none", "important");
-                console.log(`[hide_workspace_cards] Hiding card: ${labelText} (user lacks required role)`);
-              }
-            }
+        // Hide if user doesn't have any of the allowed roles
+        if (!hasAnyRole(allowedRoles)) {
+          // Walk up the DOM to find the card container
+          let cardContainer = titleEl.closest('.grid-col') || 
+                            titleEl.closest('.widget') || 
+                            titleEl.closest('.col') ||
+                            titleEl.closest('[class*="col-"]') ||
+                            titleEl.parentElement?.parentElement;
+          
+          if (cardContainer) {
+            cardContainer.style.setProperty("display", "none", "important");
+            cardsHidden++;
+            console.log(`[hide_workspace_cards] ✓ HIDDEN: "${labelText}" (user lacks role: ${allowedRoles.join(', ')})`);
+          } else {
+            console.log(`[hide_workspace_cards] ✗ FAILED to hide: "${labelText}" (no container found)`);
           }
-        });
-      });
+        } else {
+          console.log(`[hide_workspace_cards] Card "${labelText}" visible (user has required role)`);
+        }
+      }
     });
 
-    // Also check for cards in the shortcuts section
-    document.querySelectorAll('.shortcuts-wrapper .shortcut-widget-box').forEach(shortcut => {
+    // Also check for shortcut widgets (different structure)
+    document.querySelectorAll('.shortcut-widget-box').forEach(shortcut => {
       const labelEl = shortcut.querySelector('.shortcut-label');
       const labelText = labelEl?.textContent?.trim();
       if (!labelText) return;
+
+      cardsProcessed++;
 
       const cardKey = Object.keys(CARD_ROLE_RULES).find(
         key => key.toLowerCase() === labelText.toLowerCase()
       );
 
       if (cardKey) {
+        console.log(`[hide_workspace_cards] Found restricted shortcut: "${labelText}"`);
         const allowedRoles = CARD_ROLE_RULES[cardKey];
         if (!hasAnyRole(allowedRoles)) {
           shortcut.style.setProperty("display", "none", "important");
-          console.log(`[hide_workspace_cards] Hiding shortcut: ${labelText} (user lacks required role)`);
+          cardsHidden++;
+          console.log(`[hide_workspace_cards] ✓ HIDDEN: "${labelText}" (user lacks role: ${allowedRoles.join(', ')})`);
         }
       }
     });
+
+    console.log(`[hide_workspace_cards] Summary: Processed ${cardsProcessed} cards, hidden ${cardsHidden}`);
   }
 
   // ==========================
@@ -126,20 +140,27 @@
     }
 
     console.log("[hide_workspace_cards] Initializing...");
+    console.log("[hide_workspace_cards] User roles:", frappe.user_roles);
 
     // Run immediately on load
     hideRestrictedCards();
 
-    // Staggered passes — catches items that render slightly late
+    // AGGRESSIVE staggered passes — catches items that render late
+    setTimeout(hideRestrictedCards, 50);
     setTimeout(hideRestrictedCards, 100);
+    setTimeout(hideRestrictedCards, 300);
     setTimeout(hideRestrictedCards, 500);
+    setTimeout(hideRestrictedCards, 800);
     setTimeout(hideRestrictedCards, 1500);
+    setTimeout(hideRestrictedCards, 3000);
 
     // Re-run on every Frappe page navigation
     $(document).on("page-change", () => {
+      console.log("[hide_workspace_cards] Page changed, re-checking cards");
       setTimeout(hideRestrictedCards, 50);
-      setTimeout(hideRestrictedCards, 300);
-      setTimeout(hideRestrictedCards, 800);
+      setTimeout(hideRestrictedCards, 200);
+      setTimeout(hideRestrictedCards, 500);
+      setTimeout(hideRestrictedCards, 1000);
     });
 
     // MutationObserver — fires whenever workspace content is re-rendered
