@@ -31,35 +31,66 @@
   }
 
   function getCurrentWorkspace() {
-    const route = frappe.get_route();
-    console.log("[hide_workspace_cards] Current route:", route);
-    
-    // Try multiple route formats
-    // v16 might use lowercase "workspace" or different structure
-    if (route && route.length > 0) {
-      const firstPart = route[0]?.toLowerCase();
+    try {
+      const route = frappe.get_route();
+      const routeStr = frappe.get_route_str ? frappe.get_route_str() : null;
       
-      // Check various route formats:
-      // ["Workspace", "Selling"] or ["workspace", "selling"] or just ["selling"]
-      if (firstPart === "workspace" && route[1]) {
-        return route[1].toLowerCase();
+      console.log("[hide_workspace_cards] DEBUG - route array:", route);
+      console.log("[hide_workspace_cards] DEBUG - route string:", routeStr);
+      console.log("[hide_workspace_cards] DEBUG - current URL:", window.location.href);
+      console.log("[hide_workspace_cards] DEBUG - pathname:", window.location.pathname);
+      
+      // Try multiple route formats
+      if (route && route.length > 0) {
+        const firstPart = route[0]?.toLowerCase();
+        console.log("[hide_workspace_cards] DEBUG - first route part:", firstPart);
+        
+        // Check various route formats:
+        // ["Workspace", "Selling"] or ["workspace", "selling"] or just ["selling"]
+        if (firstPart === "workspace" && route[1]) {
+          console.log("[hide_workspace_cards] DEBUG - Found workspace (format 1):", route[1]);
+          return route[1].toLowerCase();
+        }
+        
+        // Sometimes the workspace name is directly in route[0]
+        // Check if it matches a known workspace name
+        if (firstPart === "selling" || firstPart === "stock" || firstPart === "buying") {
+          console.log("[hide_workspace_cards] DEBUG - Found workspace (format 2):", firstPart);
+          return firstPart;
+        }
       }
       
-      // Sometimes the workspace name is directly in route[0]
-      // Check if it matches a known workspace name
-      if (firstPart === "selling" || firstPart === "stock" || firstPart === "buying") {
-        return firstPart;
+      // Check if URL contains workspace info
+      const pathname = window.location.pathname;
+      if (pathname && pathname.includes('/app/')) {
+        const pathParts = pathname.split('/');
+        const appIndex = pathParts.indexOf('app');
+        if (appIndex >= 0 && pathParts[appIndex + 1]) {
+          const workspaceName = pathParts[appIndex + 1].toLowerCase();
+          console.log("[hide_workspace_cards] DEBUG - Found workspace from URL:", workspaceName);
+          if (workspaceName === 'selling' || workspaceName === 'stock' || workspaceName === 'buying') {
+            return workspaceName;
+          }
+        }
       }
+      
+      console.log("[hide_workspace_cards] DEBUG - No workspace detected");
+      return null;
+    } catch (e) {
+      console.error("[hide_workspace_cards] ERROR in getCurrentWorkspace:", e);
+      return null;
     }
-    
-    return null;
   }
 
   // ==========================
   // CARD HIDING LOGIC
   // ==========================
   function hideRestrictedCards() {
+    console.log("[hide_workspace_cards] hideRestrictedCards() called");
+    
     const currentWorkspace = getCurrentWorkspace();
+    console.log("[hide_workspace_cards] currentWorkspace returned:", currentWorkspace);
+    
     if (!currentWorkspace) {
       console.log("[hide_workspace_cards] Not on a workspace, skipping");
       return;
