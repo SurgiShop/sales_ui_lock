@@ -32,9 +32,26 @@
 
   function getCurrentWorkspace() {
     const route = frappe.get_route();
-    if (route && route[0] === "Workspace") {
-      return route[1]?.toLowerCase();
+    console.log("[hide_workspace_cards] Current route:", route);
+    
+    // Try multiple route formats
+    // v16 might use lowercase "workspace" or different structure
+    if (route && route.length > 0) {
+      const firstPart = route[0]?.toLowerCase();
+      
+      // Check various route formats:
+      // ["Workspace", "Selling"] or ["workspace", "selling"] or just ["selling"]
+      if (firstPart === "workspace" && route[1]) {
+        return route[1].toLowerCase();
+      }
+      
+      // Sometimes the workspace name is directly in route[0]
+      // Check if it matches a known workspace name
+      if (firstPart === "selling" || firstPart === "stock" || firstPart === "buying") {
+        return firstPart;
+      }
     }
+    
     return null;
   }
 
