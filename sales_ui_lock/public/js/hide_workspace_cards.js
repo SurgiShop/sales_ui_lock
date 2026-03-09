@@ -46,8 +46,8 @@
         console.log("[hide_workspace_cards] DEBUG - first route part:", firstPart);
         
         // Check various route formats:
-        // ["Workspace", "Selling"] or ["workspace", "selling"] or just ["selling"]
-        if (firstPart === "workspace" && route[1]) {
+        // ["Workspace", "Selling"] or ["Workspaces", "Selling"] or ["workspace", "selling"] or just ["selling"]
+        if ((firstPart === "workspace" || firstPart === "workspaces") && route[1]) {
           console.log("[hide_workspace_cards] DEBUG - Found workspace (format 1):", route[1]);
           return route[1].toLowerCase();
         }
