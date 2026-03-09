@@ -14,5 +14,6 @@ after_migrate = ["sales_ui_lock.workspace_sidebar.ensure_sales_sidebar"]
 
 app_include_js = [
     "/assets/sales_ui_lock/js/desk_ui_lock.js",
-    "/assets/sales_ui_lock/js/disable_navbar_items.js"
+    "/assets/sales_ui_lock/js/disable_navbar_items.js",
+    "/assets/sales_ui_lock/js/hide_workspace_cards.js"
 ]
